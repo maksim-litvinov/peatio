@@ -37,17 +37,6 @@ module BlockchainClient
       ]
     end
 
-    def create_address!(options = {})
-      secret = options.fetch(:secret) { Passgen.generate(length: 64, symbols: true) }
-      json_rpc(:wallet_propose, { passphrase: secret }).fetch('result')
-                                                       .yield_self do |result|
-        result.slice('key_type', 'master_seed', 'master_seed_hex',
-                      'master_key', 'public_key', 'public_key_hex')
-              .merge(address: normalize_address(result.fetch('account_id')), secret: secret)
-              .symbolize_keys
-      end
-    end
-
     def inspect_address!(address)
       {
         address:  normalize_address(address),
