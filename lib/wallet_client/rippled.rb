@@ -22,7 +22,7 @@ module WalletClient
     end
 
     def normalize_address(address)
-      address
+      address.gsub(/\?dt=\d*\Z/, '')
     end
 
     def create_withdrawal!(issuer, recipient, amount, _options = {})
