@@ -1,6 +1,8 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require 'securerandom'
+
 module WalletClient
   class Rippled < Base
 
@@ -10,7 +12,21 @@ module WalletClient
       @json_rpc_endpoint = URI.parse(wallet.uri)
     end
 
+    def latest_block_number
+      Rails.cache.fetch :latest_ripple_ledger, expires_in: 5.seconds do
+        response = json_rpc(:ledger, [{ "ledger_index": 'validated' }])
+        response.dig('result', 'ledger_index').to_i
+      end
+    end
+
     def create_address!(options = {})
+      {
+        address: "#{wallet.address}?dt=#{generate_destination_tag}",
+        secret: wallet.settings['secret']
+      }
+    end
+
+    def create_raw_address!(options = {})
       secret = options.fetch(:secret) { Passgen.generate(length: 64, symbols: true) }
       json_rpc(:wallet_propose, { passphrase: secret }).fetch('result')
                                                        .yield_self do |result|
@@ -23,6 +39,11 @@ module WalletClient
 
     def normalize_address(address)
       address.gsub(/\?dt=\d*\Z/, '')
+    end
+
+    def destination_tag_from(address)
+      address =~ /\?dt=(\d*)\Z/
+      $1.to_i
     end
 
     def create_withdrawal!(issuer, recipient, amount, _options = {})
@@ -51,7 +72,8 @@ module WalletClient
           Amount:          convert_to_base_unit!(amount).to_s,
           Destination:     destination_address,
           DestinationTag:  destination_tag,
-          TransactionType: 'Payment'
+          TransactionType: 'Payment',
+          LastLedgerSequence: latest_block_number + 4
         }
       }
 
@@ -99,9 +121,13 @@ module WalletClient
       end
     end
 
-    def destination_tag_from(address)
-      address =~ /\?dt=(\d*)\Z/
-      $1.to_i
+    def generate_destination_tag
+      begin
+        # Reserve destination 0 for system purpose
+        tag = SecureRandom.random_number(10**10) + 1
+      end while PaymentAddress.where(currency_id: :xrp)
+                              .where('address LIKE ?', "%dt=#{tag}")
+                              .any?
     end
   end
 end

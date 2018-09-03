@@ -11,9 +11,6 @@ module WalletService
       destination_address = destination_wallet(deposit).address
       pa = deposit.account.payment_address
 
-      # this will automatically deduct fee from amount
-      options = options.merge( subtract_fee: true )
-
       client.create_withdrawal!(
         { address: pa.address, secret: pa.secret },
         { address: destination_address },

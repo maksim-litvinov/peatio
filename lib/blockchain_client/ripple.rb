@@ -31,8 +31,7 @@ module BlockchainClient
     def build_entries(tx, currency)
       [
         {
-          amount:  convert_from_base_unit(tx.fetch('Amount'), currency),
-          address: to_address(tx)
+          amount:  convert_from_base_unit(tx.fetch('Amount'), currency)
         }
       ]
     end
@@ -46,8 +45,7 @@ module BlockchainClient
 
     def calculate_confirmations(tx, ledger_index = nil)
       ledger_index ||= tx.fetch('ledger_index')
-      tx.fetch('LastLedgerSequence', latest_block_number)
-        .yield_self { |index| index -  ledger_index }
+      latest_block_number - ledger_index
     end
 
     def fetch_transactions(ledger_index)
@@ -62,10 +60,15 @@ module BlockchainClient
     end
 
     def latest_block_number
-      Rails.cache.fetch :latest_ledger, expires_in: 5.seconds do
+      Rails.cache.fetch :latest_ripple_ledger, expires_in: 5.seconds do
         response = json_rpc(:ledger, [{ "ledger_index": 'validated' }])
         response.dig('result', 'ledger_index').to_i
       end
+    end
+
+    def destination_tag_from(address)
+      address =~ /\?dt=(\d*)\Z/
+      $1.to_i
     end
 
     protected
@@ -109,11 +112,6 @@ module BlockchainClient
 
     def valid_address?(address)
       /\Ar[0-9a-zA-Z]{33}(:?\?dt=[1-9]\d*)?\z/.match?(address)
-    end
-
-    def destination_tag_from(address)
-      address =~ /\?dt=(\d*)\Z/
-      $1.to_i
     end
   end
 end

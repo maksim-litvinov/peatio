@@ -51,12 +51,19 @@ module BlockchainService
       transactions.each_with_object([]) do |tx, deposits|
         next unless valid_transaction?(tx)
 
-        payment_addresses_where(address: client.to_address(tx)) do |payment_address|
+        if ledger_index == 12293822 || ledger_index == '12293822'
+          binding.pry
+        end
+
+        destination_tag = tx['DestinationTag'] || client.destination_tag_from(tx['Destination'])
+        address = "#{client.to_address(tx)}?dt=#{destination_tag}"
+
+        payment_addresses_where(address: address) do |payment_address|
           deposit_txs = client.build_transaction(tx: tx, currency: payment_address.currency)
           deposit_txs.fetch(:entries).each_with_index do |entry, index|
             deposits << {
               txid:           deposit_txs[:id],
-              address:        entry[:address],
+              address:        address,
               amount:         entry[:amount],
               member:         payment_address.account.member,
               currency:       payment_address.currency,
