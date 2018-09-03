@@ -39,10 +39,13 @@ module APIv2
          'If this case you should try again later.'
     params do
       requires :currency, type: String, values: -> { Currency.coins.enabled.codes }, desc: 'The account you want to deposit to.'
+      given :currency do
+        optional :address_format, type: String, values: -> { %w[legacy cash] }, validate_currency_address_format: true, desc: 'Address format legacy/cash'
+      end
     end
     get '/deposit_address' do
       current_user.ac(params[:currency]).payment_address.yield_self do |pa|
-        { currency: params[:currency], address: pa.address }
+        { currency: params[:currency], address: params[:address_format] ? pa.format_address(params[:address_format]) : pa.address }
       end
     end
 

@@ -40,5 +40,17 @@ module APIv2
              message: 'should be less than to.'
       end
     end
+
+    class ValidateCurrencyAddressFormat < Grape::Validations::Base
+      def validate_param!(name, params)
+        return unless params.key?(name)
+        currency = Currency.find_by(id: params[:currency])
+        return if currency && currency.blockchain_api.supports_cash_addr_format?
+
+        fail Grape::Exceptions::Validation,
+             params:  [@scope.full_name('currency')],
+             message: 'does not support cash address format.'
+      end
+    end
   end
 end

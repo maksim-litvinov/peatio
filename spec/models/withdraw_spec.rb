@@ -33,6 +33,12 @@ describe Withdraw do
       let(:sum) { 10.to_d }
       before { subject.submit! }
 
+      it 'should be rejected if address is invalid' do
+        WalletClient.stubs(:[]).returns(mock('rpc', inspect_address!: { is_valid: false }))
+        subject.audit!
+        expect(subject).to be_rejected
+      end
+
       context 'internal recipient' do
         let(:payment_address) { create(:btc_payment_address) }
         subject { create(:btc_withdraw, rid: payment_address.address) }
@@ -63,6 +69,7 @@ describe Withdraw do
       end
 
       it 'should accept withdraw with clean history' do
+        WalletClient.stubs(:[]).returns(mock('rpc', inspect_address!: { is_valid: true }))
         subject.audit!
         expect(subject).to be_accepted
       end
@@ -70,6 +77,7 @@ describe Withdraw do
       context 'sum less than quick withdraw limit' do
         let(:sum) { '0.099'.to_d }
         it 'should approve quick withdraw directly' do
+          WalletClient.stubs(:[]).returns(mock('rpc', inspect_address!: { is_valid: true }))
           subject.audit!
           expect(subject).to be_processing
         end

@@ -4,8 +4,8 @@
 module Withdraws
   class Coin < Withdraw
     before_validation do
-      next unless currency&.supports_cash_addr_format? && rid?
-      self.rid = CashAddr::Converter.to_legacy_address(rid) if CashAddr::Converter.is_valid?(rid)
+      next unless blockchain_api&.supports_cash_addr_format? && rid?
+      self.rid = CashAddr::Converter.to_cash_address(rid) if CashAddr::Converter.is_valid?(rid)
     end
 
     before_validation do
@@ -15,7 +15,7 @@ module Withdraws
     end
 
     validate do
-      if currency&.supports_cash_addr_format? && rid?
+      if blockchain_api&.supports_cash_addr_format? && rid?
         errors.add(:rid, :invalid) unless CashAddr::Converter.is_valid?(rid)
       end
     end
@@ -45,17 +45,16 @@ module Withdraws
       'N/A'
     end
 
-    # TODO: backport audit!
     def audit!
-      # inspection = currency.api.inspect_address!(rid)
-      #
-      # if inspection[:is_valid] == false
-      #   Rails.logger.info { "#{self.class.name}##{id} uses invalid address: #{rid.inspect}" }
-      #   reject!
-      # else
-      #   super
-      # end
-      super
+      wallet = Wallet.active.deposit.find_by(currency_id: currency_id)
+      inspection = WalletClient[wallet].inspect_address!(rid)
+
+      if inspection[:is_valid] == false
+        Rails.logger.info { "#{self.class.name}##{id} uses invalid address: #{rid.inspect}" }
+        reject!
+      else
+        super
+      end
     end
 
     def as_json(*)
