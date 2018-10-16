@@ -18,15 +18,6 @@ class BitfinexKFetcher
     frame = period_to_frame(period)
     return [] unless AVAILABLE_FRAMES.include?(frame)
 
-    candles = fetch_redis_data(market: market, period: period)
-    if candles.any?
-      # If first time greater or equal to start just return first candle data
-      first_time = candles.first[0]
-      return candles.first if first_time >= start
-      # Find candle with cached candles if start in the interval first..last
-      return candles.select { |candle| candle[0] == start }.first if candles.last[0] >= start
-    end
-
     candles = fetch_bitfinex_data(market: market, start: start, frame: frame)
     push_to_redis(candles: candles, period: period, market: market)
     candles.first
@@ -37,7 +28,7 @@ class BitfinexKFetcher
   private
 
   def fetch_bitfinex_data(market:, start:, frame:)
-    Rails.logger.info "Fetch data from bitfinex for market #{market} for frame #{frame} start from #{start}"
+    Rails.logger.info { "Fetch data from bitfinex for market #{market} for frame #{frame} start from #{start}" }
     response = Faraday.get("#{CANDLES_API}:#{frame}:t#{market.upcase}/hist", start: start * MS)
 
     if response.status == 429
@@ -61,11 +52,6 @@ class BitfinexKFetcher
     return "#{period / 60}h"  if period < 1440
 
     "#{period / 60 / 24}D"
-  end
-
-  def fetch_redis_data(market:, period:)
-    redis.lrange(key(market, period), 0, -1)
-         .map { |c| p "fetch"; p c; c && JSON.parse(c) }
   end
 
   def push_to_redis(candles:, market:, period:)
