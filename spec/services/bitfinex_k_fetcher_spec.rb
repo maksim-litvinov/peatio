@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-describe BitfinexKLineFetcher do
+describe BitfinexKFetcher do
   let(:service) { described_class.new(redis: KlineDB.redis) }
   let(:candles) do
     [first_candle, second_candle, third_candle, latest_candle]
@@ -85,6 +85,9 @@ describe BitfinexKLineFetcher do
     end
 
     it 'fetch data and push to redis correctly' do
+      p "candles"
+      p candles
+
       service.fetch_candle_data(market: market, period: 1, start: 1539185220)
       data_from_redis = service.send(:fetch_redis_data, market: market, period: 1)
       expect(data_from_redis).to eq candles

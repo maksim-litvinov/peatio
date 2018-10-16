@@ -12,7 +12,7 @@ Signal.trap("TERM") do
   $running = false
 end
 
-@bitfinex_fetcher = BitfinexKLineFetcher.new(redis: @r)
+@bitfinex_fetcher = BitfinexKFetcher.new(redis: @r)
 
 def bitfinex_candles?
   ENV.fetch('BITFINEX_CANDLES', 'false') == 'true'
@@ -50,10 +50,6 @@ def _k1_set(market, start, period)
 end
 
 def k1(market, start)
-  if bitfinex_candles?
-    return @bitfinex_fetcher.fetch_candle_data(market: market, period: 1, start: start)
-  end
-
   trades = Trade
              .with_market(market)
              .where('created_at >= ? AND created_at < ?', start, 1.minutes.since(start))
